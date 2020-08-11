@@ -10,7 +10,7 @@ ARG BASE_CONTAINER=$ROOT_CONTAINER
 FROM $BASE_CONTAINER
 
 LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
-ARG NB_USER="jovyan"
+ARG NB_USER="jfoue"
 ARG NB_UID="1000"
 ARG NB_GID="100"
 
@@ -35,52 +35,6 @@ RUN apt-get update \
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen
-
-# Install .NET CLI dependencies
-RUN apt-get install -y --no-install-recommends \
-        libc6 \
-        libgcc1 \
-        libgssapi-krb5-2 \
-        libicu60 \
-        libssl1.1 \
-        libstdc++6 \
-        zlib1g 
-  
- RUN rm -rf /var/lib/apt/lists/*
-
-# Install .NET Core SDK
-ENV DOTNET_SDK_VERSION 3.0.100
-
-RUN curl -SL --output dotnet.tar.gz https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz \
-    && dotnet_sha512='766da31f9a0bcfbf0f12c91ea68354eb509ac2111879d55b656f19299c6ea1c005d31460dac7c2a4ef82b3edfea30232c82ba301fb52c0ff268d3e3a1b73d8f7' \
-    && echo "$dotnet_sha512 dotnet.tar.gz" | sha512sum -c - \
-    && mkdir -p /usr/share/dotnet \
-    && tar -zxf dotnet.tar.gz -C /usr/share/dotnet \
-    && rm dotnet.tar.gz \
-    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
-
-# Enable detection of running in a container
-ENV DOTNET_RUNNING_IN_CONTAINER=true \
-    # Enable correct mode for dotnet watch (only mode supported in a container)
-    DOTNET_USE_POLLING_FILE_WATCHER=true \
-    # Skip extraction of XML docs - generally not useful within an image/container - helps performance
-    NUGET_XMLDOC_MODE=skip \
-    # Opt out of telemetry until after we install jupyter when building the image, this prevents caching of machine id
-    DOTNET_TRY_CLI_TELEMETRY_OPTOUT=true
-
-# Trigger first run experience by running arbitrary cmd
-RUN dotnet help
-
-
-# Install Microsoft.DotNet.Interactive
-RUN dotnet tool install -g dotnet-try 
-#--add-source "https://dotnet.myget.org/F/dotnet-try/api/v3/index.json"
-
-ENV PATH="${PATH}:${HOME}/.dotnet/tools"
-RUN echo "$PATH"
-
-# Install kernel specs
-RUN dotnet try jupyter install
 
 # Configure environment
 ENV CONDA_DIR=/opt/conda \
@@ -149,7 +103,7 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda3-py38_${MINICONDA
 # Install Tini
 RUN conda install --quiet --yes 'tini=0.18.0' && \
     conda list tini | grep tini | tr -s ' ' | cut -d ' ' -f 1,2 >> $CONDA_DIR/conda-meta/pinned && \
-    conda clean --all -f -y && \
+    #conda clean --all -f -y && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
@@ -163,7 +117,7 @@ RUN conda install --quiet --yes \
     'notebook=6.0.3' \
     'jupyterhub=1.1.0' \
     'jupyterlab=2.1.5' && \
-    conda clean --all -f -y && \
+    #conda clean --all -f -y && \
     npm cache clean --force && \
     jupyter notebook --generate-config && \
     rm -rf $CONDA_DIR/share/jupyter/lab/staging && \
@@ -182,10 +136,55 @@ COPY start.sh start-notebook.sh start-singleuser.sh /usr/local/bin/
 COPY jupyter_notebook_config.py /etc/jupyter/
 
 # Fix permissions on /etc/jupyter as root
-USER root
-RUN fix-permissions /etc/jupyter/
+#USER root
+#RUN fix-permissions /etc/jupyter/
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID
 
 WORKDIR $HOME
+
+# Install .NET CLI dependencies
+RUN apt-get install -y --no-install-recommends \
+        libc6 \
+        libgcc1 \
+ RUN rm -rf /var/lib/apt/lists/*
+
+# Install .NET Core SDK
+        libgssapi-krb5-2 \
+        libicu60 \
+        libssl1.1 \
+        libstdc++6 \
+        zlib1g 
+  
+ENV DOTNET_SDK_VERSION 3.0.100
+
+RUN curl -SL --output dotnet.tar.gz https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$DOTNET_SDK_VERSION/dotnet-sdk-$DOTNET_SDK_VERSION-linux-x64.tar.gz \
+    && dotnet_sha512='766da31f9a0bcfbf0f12c91ea68354eb509ac2111879d55b656f19299c6ea1c005d31460dac7c2a4ef82b3edfea30232c82ba301fb52c0ff268d3e3a1b73d8f7' \
+    && echo "$dotnet_sha512 dotnet.tar.gz" | sha512sum -c - \
+    && mkdir -p /usr/share/dotnet \
+    && tar -zxf dotnet.tar.gz -C /usr/share/dotnet \
+    && rm dotnet.tar.gz \
+    && ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet
+
+# Enable detection of running in a container
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    # Enable correct mode for dotnet watch (only mode supported in a container)
+    DOTNET_USE_POLLING_FILE_WATCHER=true \
+    # Skip extraction of XML docs - generally not useful within an image/container - helps performance
+    NUGET_XMLDOC_MODE=skip \
+    # Opt out of telemetry until after we install jupyter when building the image, this prevents caching of machine id
+    DOTNET_TRY_CLI_TELEMETRY_OPTOUT=true
+
+# Trigger first run experience by running arbitrary cmd
+RUN dotnet help
+
+# Install Microsoft.DotNet.Interactive
+RUN dotnet tool install -g dotnet-try 
+#--add-source "https://dotnet.myget.org/F/dotnet-try/api/v3/index.json"
+
+ENV PATH="${PATH}:${HOME}/.dotnet/tools"
+RUN echo "$PATH"
+
+# Install kernel specs
+RUN dotnet try jupyter install

@@ -148,14 +148,8 @@ WORKDIR $HOME
 RUN apt-get install -y --no-install-recommends \
         libc6 \
         libgcc1 \
- RUN rm -rf /var/lib/apt/lists/*
 
-# Install .NET Core SDK
-        libgssapi-krb5-2 \
-        libicu60 \
-        libssl1.1 \
-        libstdc++6 \
-        zlib1g 
+RUN rm -rf /var/lib/apt/lists/*
   
 ENV DOTNET_SDK_VERSION 3.0.100
 
@@ -183,8 +177,8 @@ RUN dotnet help
 RUN dotnet tool install -g dotnet-try 
 #--add-source "https://dotnet.myget.org/F/dotnet-try/api/v3/index.json"
 
-ENV PATH="${PATH}:${HOME}/.dotnet/tools"
-RUN echo "$PATH"
-
 # Install kernel specs
 RUN dotnet try jupyter install
+
+ENV PATH="${PATH}:${HOME}/.dotnet/tools"
+RUN echo "$PATH"
